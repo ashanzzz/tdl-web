@@ -17,6 +17,8 @@ services:
       - PROXY_URL=http://192.168.8.11:7890
       - MCP_GATEWAY_URL=http://192.168.8.11:8791
       - TRACKER_INTERVAL=1800
+      - AUTH_USERNAME=ashan
+      - AUTH_PASSWORD=Woo@@@204317
     volumes:
       # 挂载宿主机或 NAS 实际下载存储目录
       - /mnt/user/downloads/telegram:/data/downloads

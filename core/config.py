@@ -66,3 +66,9 @@ SERVER_PORT = int(os.environ.get("PORT", 8765))
 
 # 默认跟踪轮询间隔（秒），默认 30 分钟 (1800 秒)
 DEFAULT_TRACKER_INTERVAL = int(os.environ.get("TRACKER_INTERVAL", 1800))
+
+# 身份安全认证配置
+AUTH_USERNAME = os.environ.get("AUTH_USERNAME", "ashan")
+AUTH_PASSWORD = os.environ.get("AUTH_PASSWORD", "Woo@@@204317")
+AUTH_SESSION_EXPIRE_HOURS = int(os.environ.get("AUTH_SESSION_EXPIRE_HOURS", 24 * 7))  # 默认 7 天有效
+

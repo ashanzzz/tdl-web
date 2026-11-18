@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>tdl-web</Name>
+  <Repository>ghcr.io/ashanzzz/tdl-web:latest</Repository>
+  <Registry>https://github.com/ashanzzz/tdl-web/pkgs/container/tdl-web</Registry>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support/>
+  <Project>https://github.com/ashanzzz/tdl-web</Project>
+  <Overview>Telegram Downloader Web 控制中心：内置 SQLite 永久防重索引、一键存储迁移归档、定时增量自动追更监控，支持联动局域网 MCP 网关与代理。</Overview>
+  <Category>Downloaders: MediaApp:Video</Category>
+  <WebUI>http://[IP]:[PORT:8765]/</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/iyear/tdl/master/docs/logo.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI 端口" Target="8765" Default="8765" Mode="tcp" Description="控制台 WebUI 访问端口" Type="Port" Display="always" Required="true" Mask="false">8765</Config>
+  <Config Name="媒体下载存储目录" Target="/data/downloads" Default="/mnt/user/downloads/telegram" Mode="rw" Description="视频下载保存的宿主机路径" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/downloads/telegram</Config>
+  <Config Name="配置与防重数据库目录" Target="/data/config" Default="/mnt/user/appdata/tdl-web/config" Mode="rw" Description="持久化保存 history.db 防重库与元数据" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tdl-web/config</Config>
+  <Config Name="Telegram Session 登录凭证目录" Target="/root/.tdl" Default="/mnt/user/appdata/tdl-web/session" Mode="rw" Description="持久化保存 Telegram 登录 Session，保证重启不掉登录" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tdl-web/session</Config>
+  <Config Name="代理服务器地址" Target="PROXY_URL" Default="http://192.168.8.11:7890" Mode="" Description="网络代理协议与地址" Type="Variable" Display="always" Required="false" Mask="false">http://192.168.8.11:7890</Config>
+  <Config Name="MCP Gateway 探测地址" Target="MCP_GATEWAY_URL" Default="http://192.168.8.11:8791" Mode="" Description="局域网 Telegram Userbot MCP Gateway 地址" Type="Variable" Display="always" Required="false" Mask="false">http://192.168.8.11:8791</Config>
+  <Config Name="追更轮询默认周期(秒)" Target="TRACKER_INTERVAL" Default="1800" Mode="" Description="默认轮询检查周期，1800秒为30分钟" Type="Variable" Display="always" Required="false" Mask="false">1800</Config>
+  <Config Name="管理员用户名" Target="AUTH_USERNAME" Default="ashan" Mode="" Description="WebUI 登录认证用户名" Type="Variable" Display="always" Required="true" Mask="false">ashan</Config>
+  <Config Name="管理员访问密码" Target="AUTH_PASSWORD" Default="Woo@@@204317" Mode="" Description="WebUI 登录访问密码" Type="Variable" Display="always" Required="true" Mask="true">Woo@@@204317</Config>
+</Container>

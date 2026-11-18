@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 import psutil
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -30,6 +30,10 @@ from core.db import (
 )
 from core.migrator import scan_and_index_existing_files, get_migration_summary, migrate_files
 from core.tracker import tracker_engine
+from core.auth import (
+    init_auth_table, verify_credentials, create_session,
+    validate_token, revoke_session, get_token_from_request
+)
 
 app = FastAPI(title="tdl Telegram Downloader WebUI & Watchdog")
 
@@ -40,6 +44,62 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ==================== 安全与隐私认证中间件 ====================
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    path = request.url.path
+    # 白名单端点放行
+    if (
+        not path.startswith("/api/")
+        or path in ["/api/auth/login", "/api/auth/status"]
+        or path.startswith("/thumb/")
+    ):
+        return await call_next(request)
+
+    # 验证 API Token 或 Cookie
+    token = get_token_from_request(request)
+    session = validate_token(token) if token else None
+    if not session:
+        return JSONResponse(status_code=401, content={"detail": "未授权访问，请先登录"})
+
+    return await call_next(request)
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/login")
+def api_login(req: LoginRequest, response: Response):
+    if not verify_credentials(req.username, req.password):
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+    
+    token = create_session(req.username)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        max_age=7 * 86400,
+        samesite="lax",
+        secure=False
+    )
+    return {"success": True, "token": token, "username": req.username}
+
+@app.post("/api/auth/logout")
+def api_logout(request: Request, response: Response):
+    token = get_token_from_request(request)
+    if token:
+        revoke_session(token)
+    response.delete_cookie("access_token")
+    return {"success": True, "message": "已成功登出"}
+
+@app.get("/api/auth/status")
+def api_auth_status(request: Request):
+    token = get_token_from_request(request)
+    session = validate_token(token) if token else None
+    if session:
+        return {"authenticated": True, "username": session["username"]}
+    return {"authenticated": False}
 
 TDL_EXE = TDL_BIN
 LOG_FILE = Path(os.path.expanduser(r"~\.tdl\log\latest.log"))
@@ -1718,6 +1778,7 @@ def api_downloads_scan():
 @app.on_event("startup")
 def on_startup():
     init_db()
+    init_auth_table()
     tracker_engine.set_queue_manager(queue_manager)
     tracker_engine.start()
     threading.Thread(target=scan_and_index_existing_files, daemon=True).start()
