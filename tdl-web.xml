@@ -22,7 +22,7 @@
   <DonateLink/>
   <Requires/>
   <Config Name="WebUI 端口" Target="8765" Default="8765" Mode="tcp" Description="控制台 WebUI 访问端口" Type="Port" Display="always" Required="true" Mask="false">8765</Config>
-  <Config Name="媒体下载存储目录" Target="/data/downloads" Default="/mnt/user/downloads/telegram" Mode="rw" Description="视频下载保存的宿主机路径" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/downloads/telegram</Config>
+  <Config Name="媒体下载存储目录" Target="/data/downloads" Default="/mnt/user/Hdd_Disk_Appdata/nextcloud/data/ashan/files/download/telegram" Mode="rw" Description="视频下载保存的宿主机路径" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Hdd_Disk_Appdata/nextcloud/data/ashan/files/download/telegram</Config>
   <Config Name="配置与防重数据库目录" Target="/data/config" Default="/mnt/user/appdata/tdl-web/config" Mode="rw" Description="持久化保存 history.db 防重库与元数据" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tdl-web/config</Config>
   <Config Name="Telegram Session 登录凭证目录" Target="/root/.tdl" Default="/mnt/user/appdata/tdl-web/session" Mode="rw" Description="持久化保存 Telegram 登录 Session，保证重启不掉登录" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/tdl-web/session</Config>
   <Config Name="代理服务器地址" Target="PROXY_URL" Default="http://192.168.8.11:7890" Mode="" Description="网络代理协议与地址" Type="Variable" Display="always" Required="false" Mask="false">http://192.168.8.11:7890</Config>

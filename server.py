@@ -1793,8 +1793,9 @@ def serve_index():
 
 if __name__ == "__main__":
     import uvicorn
+    host = os.environ.get("HOST", "0.0.0.0")
     print("=" * 60)
     print(" tdl Telegram Downloader Web 仪表盘服务已启动")
-    print(f" 本地管理地址: http://127.0.0.1:{SERVER_PORT}")
+    print(f" 管理地址: http://{host}:{SERVER_PORT}")
     print("=" * 60)
-    uvicorn.run(app, host="127.0.0.1", port=SERVER_PORT, log_level="warning")
+    uvicorn.run(app, host=host, port=SERVER_PORT, log_level="warning")
