@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tdl Telegram Downloader 控制中心</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    :root {
+      --bg-base: #090d16;
+      --bg-surface: #0f172a;
+      --bg-card: #162032;
+      --bg-card-hover: #1c2b44;
+      --border-color: #22324d;
+      --border-subtle: #19263a;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --primary: #38bdf8;
+      --primary-hover: #0ea5e9;
+      --primary-glow: rgba(56, 189, 248, 0.15);
+      --success: #10b981;
+      --success-hover: #059669;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    #app { display: flex; height: 100vh; width: 100vw; }
+
+    /* Left Sidebar */
+    .sidebar {
+      width: 360px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-badge {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: var(--primary-glow);
+      color: var(--primary);
+      font-weight: 600;
+      font-family: Consolas, monospace;
+    }
+    .search-box {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .search-input {
+      width: 100%;
+      background: var(--bg-base);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .search-input:focus { border-color: var(--primary); }
+    .type-filters {
+      display: flex;
+      gap: 5px;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+    .type-btn {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: var(--bg-card);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .type-btn.active {
+      background: var(--primary);
+      color: #000;
+      font-weight: 700;
+      border-color: var(--primary);
+    }
+
+    /* Bot subfilter row */
+    .bot-subfilter {
+      padding: 8px 16px;
+      background: rgba(16, 185, 129, 0.08);
+      border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .bot-subfilter-label {
+      font-size: 11px;
+      color: #a7f3d0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .bot-filter-pill {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .bot-filter-pill.active {
+      background: #10b981;
+      color: #000;
+      font-weight: 700;
+      border-color: #10b981;
+    }
+
+    .chat-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+    .chat-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      position: relative;
+    }
+    .chat-item:hover { background: var(--bg-card-hover); }
+    .chat-item.active {
+      background: var(--bg-card);
+      border-left: 4px solid var(--primary);
+      padding-left: 12px;
+    }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 3px;
+    }
+    .chat-title-text {
+      font-weight: 600;
+      color: #fff;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .badge-video-count {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: rgba(16, 185, 129, 0.25);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.5);
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .chat-meta {
+      font-size: 11px;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .type-badge-bot {
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+    .type-badge-normal {
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 10px;
+    }
+    .status-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .tag-downloading {
+      background: var(--primary-glow);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+    .tag-completed {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .tag-queued {
+      background: var(--warning-bg);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+    .chat-item-quick-dl {
+      opacity: 0.2;
+      transition: opacity 0.15s, background 0.15s;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--primary);
+      padding: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-item:hover .chat-item-quick-dl {
+      opacity: 1;
+      background: rgba(56, 189, 248, 0.15);
+      border-color: rgba(56, 189, 248, 0.3);
+    }
+
+    /* Main Viewport */
+    .main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-base);
+    }
+
+    /* Top Bar */
+    .top-bar {
+      height: 60px;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+    .metrics-group {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .metric-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .metric-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .metric-val {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .metric-val.speed {
+      font-size: 16px;
+      font-family: Consolas, monospace;
+      color: #38bdf8;
+      text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+    }
+
+    /* Nav Tabs */
+    .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tab-btn:hover { background: var(--bg-card); color: #fff; }
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: #fff;
+      border-color: var(--border-color);
+    }
+    .tab-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: var(--warning);
+      color: #000;
+      font-weight: 800;
+    }
+
+    /* Content Area */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* Chat Banner */
+    .chat-banner {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .banner-left { flex: 1; min-width: 0; }
+    .banner-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .banner-username {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: normal;
+    }
+    .banner-stats {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .badge-completed {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success);
+      font-weight: 700;
+    }
+    .badge-downloading {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--primary-glow);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      font-weight: 700;
+    }
+    .banner-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: #10b981;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+    .btn-primary:hover { background: #059669; }
+    .btn-accent {
+      background: #0284c7;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+    }
+    .btn-accent:hover { background: #0369a1; }
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border-color: var(--border-color);
+    }
+    .btn-secondary:hover { background: var(--bg-card-hover); color: #fff; }
+    .btn-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border-color: var(--danger);
+    }
+    .btn-danger:hover { background: var(--danger); color: #fff; }
+    .btn-sm { padding: 4px 8px; font-size: 11px; }
+
+    /* Media Cards Grid */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 20px;
+    }
+    .movie-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .movie-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+    .movie-thumb-wrapper {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: #0b111c;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .movie-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.25s ease;
+    }
+    .movie-card:hover .movie-thumb {
+      transform: scale(1.03);
+    }
+    .thumb-blur-backdrop {
+      position: absolute;
+      inset: -10px;
+      background-size: cover;
+      background-position: center;
+      filter: blur(16px) brightness(0.4);
+      transform: scale(1.1);
+    }
+    .micro-thumb-center {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .play-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(56, 189, 248, 0.9);
+      color: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+    }
+    .thumb-badge {
+      position: absolute;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: Consolas, monospace;
+      background: rgba(0,0,0,0.75);
+      color: #fff;
+    }
+    .badge-type { top: 8px; left: 8px; background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-color); }
+    .badge-duration { bottom: 8px; right: 8px; }
+    .badge-res { top: 8px; right: 8px; background: rgba(56, 189, 248, 0.85); color: #000; }
+    .movie-body {
+      padding: 14px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .movie-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 6px;
+      line-height: 1.4;
+      word-break: break-all;
+    }
+    .movie-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      max-height: 48px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .movie-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text-dim);
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+      margin-bottom: 12px;
+    }
+    .movie-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Queue Dashboard */
+    .queue-section {
+      margin-bottom: 24px;
+    }
+    .section-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .active-task-card {
+      background: linear-gradient(135deg, #111e38 0%, #172554 100%);
+      border: 1px solid #1e3a8a;
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .active-task-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .active-task-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; transform: scale(1.2); }
+      100% { opacity: 0.4; }
+    }
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: rgba(0,0,0,0.4);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8, #10b981);
+      border-radius: 4px;
+      transition: width 0.3s;
+    }
+
+    /* In-Flight Files List (Real-time speed per file) */
+    .inflight-container {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .inflight-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #38bdf8;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .inflight-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .inflight-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 6px 10px;
+      background: rgba(15, 23, 42, 0.6);
+      border-radius: 6px;
+      border: 1px solid var(--border-subtle);
+    }
+    .inflight-fname {
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+    .inflight-speed {
+      color: #34d399;
+      font-family: Consolas, monospace;
+      font-weight: 700;
+    }
+
+    /* Queue Items List */
+    .queue-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .queue-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .queue-order {
+      font-size: 14px;
+      font-weight: 800;
+      font-family: Consolas, monospace;
+      color: var(--primary);
+      width: 32px;
+    }
+    .queue-info { flex: 1; min-width: 0; }
+    .queue-title {
+      font-weight: 600;
+      color: #fff;
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    .queue-subtitle {
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    .queue-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Logs view */
+    .log-box {
+      background: #000;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      font-family: Consolas, monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      height: 600px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .empty-state {
+      padding: 40px;
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 13px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      border: 1px dashed var(--border-color);
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      width: 440px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--bg-base);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* Fullscreen Lightbox Modal */
+    .lightbox-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px;
+    }
+    .lightbox-img {
+      max-width: 95vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      border: 1px solid var(--border-color);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 24px;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+    .lightbox-close:hover { background: rgba(255,255,255,0.3); }
+  
+    /* Filter Toolbar Styles */
+    .filter-toolbar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+    .filter-action-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border-subtle);
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-group-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .pill-group {
+      display: flex;
+      align-items: center;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+    }
+    .pill-btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .pill-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .pill-btn.active {
+      background: var(--primary);
+      color: #000;
+      box-shadow: 0 1px 6px rgba(56, 189, 248, 0.3);
+    }
+    .filter-search-box {
+      position: relative;
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 200px;
+      max-width: 320px;
+    }
+    .filter-search-box svg {
+      position: absolute;
+      left: 10px;
+      color: var(--text-dim);
+      pointer-events: none;
+    }
+    .filter-search-input {
+      width: 100%;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      border-radius: 6px;
+      padding: 6px 28px 6px 30px;
+      font-size: 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filter-search-input:focus {
+      border-color: var(--primary);
+    }
+    .filter-clear-btn {
+      position: absolute;
+      right: 8px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .filter-sort-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-select {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      border-radius: 6px;
+      padding: 5px 10px;
+      font-size: 11px;
+      outline: none;
+      cursor: pointer;
+    }
+    .filter-select:focus {
+      border-color: var(--primary);
+    }
+    .filter-summary {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+    }
+    .summary-text {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .text-primary { color: var(--primary); font-weight: 700; }
+
+  
+    /* Sidebar Global Filter */
+    .sidebar-global-filter {
+      padding: 10px 14px;
+      background: rgba(15, 23, 42, 0.7);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .side-filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .side-filter-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      min-width: 28px;
+    }
+    .side-filter-toggles {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+    }
+    .filter-check-pill {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s;
+    }
+    .filter-check-pill:hover {
+      color: #fff;
+      border-color: var(--border-color);
+    }
+    .filter-check-pill.active {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .btn-xs {
+      padding: 3px 8px;
+      font-size: 10px;
+      border-radius: 5px;
+    }
+    .badge-video-count-filtered {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-family: Consolas, monospace;
+      white-space: nowrap;
+    }
+    .badge-video-count-dim {
+      opacity: 0.4;
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--text-dim);
+      border-color: transparent;
+    }
+
+  
+    .thumb-play-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.85;
+      transition: all 0.2s ease;
+      pointer-events: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+    .movie-card:hover .thumb-play-overlay {
+      transform: translate(-50%, -50%) scale(1.15);
+      background: rgba(56, 189, 248, 0.9);
+      color: #000;
+      opacity: 1;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <!-- Left Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-title">
+          <span>⚡ tdl Telegram</span>
+          <span class="brand-badge">PRO</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" @click="fetchChats(true)" title="刷新会话列表">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" class="search-input" v-model="searchQuery" placeholder="搜索聊天、机器人、频道或 ID...">
+        <div class="type-filters">
+          <button class="type-btn" :class="{active: selectedType === 'all'}" @click="selectedType = 'all'">全部</button>
+          <button class="type-btn" :class="{active: selectedType === 'channel'}" @click="selectedType = 'channel'">📢 频道</button>
+          <button class="type-btn" :class="{active: selectedType === 'group'}" @click="selectedType = 'group'">👥 群组</button>
+          <button class="type-btn" :class="{active: selectedType === 'bot'}" @click="selectedType = 'bot'">🤖 机器人 ({{ botTotalCount }})</button>
+          <button class="type-btn" :class="{active: selectedType === 'private'}" @click="selectedType = 'private'">👤 私聊</button>
+        </div>
+      </div>
+
+      <!-- 外部全局筛选控制区 (满足：在外部直接筛选大于10s视频、仅视频、符合条件才计数) -->
+      <div class="sidebar-global-filter">
+        <!-- 时长筛选 (外部快选) -->
+        <div class="side-filter-row">
+          <span class="side-filter-label">时长:</span>
+          <div class="pill-group" style="flex: 1;">
+            <button class="pill-btn" :class="{active: filterDuration === 0}" @click="filterDuration = 0" style="flex: 1; justify-content: center;">不限</button>
+            <button class="pill-btn" :class="{active: filterDuration === 10}" @click="filterDuration = 10" title="筛选大于10秒视频" style="flex: 1.2; justify-content: center;">
+              <span>＞10s</span>
+            </button>
+            <button class="pill-btn" :class="{active: filterDuration === 30}" @click="filterDuration = 30" style="flex: 1; justify-content: center;">＞30s</button>
+            <button class="pill-btn" :class="{active: filterDuration === 60}" @click="filterDuration = 60" style="flex: 1; justify-content: center;">＞1m</button>
+          </div>
+        </div>
+
+        <!-- 媒体类型筛选 (外部快选) -->
+        <div class="side-filter-row">
+          <span class="side-filter-label">类型:</span>
+          <div class="pill-group" style="flex: 1;">
+            <button class="pill-btn" :class="{active: filterType === 'all'}" @click="filterType = 'all'" style="flex: 1; justify-content: center;">全部</button>
+            <button class="pill-btn" :class="{active: filterType === 'video_only'}" @click="filterType = 'video_only'" style="flex: 1.2; justify-content: center;">
+              <span>🎬 仅视频</span>
+            </button>
+            <button class="pill-btn" :class="{active: filterType === 'photo_only'}" @click="filterType = 'photo_only'" style="flex: 1; justify-content: center;">
+              <span>🖼 图片</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 过滤选项与全量机器人扫描 -->
+        <div class="side-filter-toggles">
+          <button class="filter-check-pill" :class="{active: onlyWithVideos}" @click="onlyWithVideos = !onlyWithVideos" title="隐藏视频数为0的无用会话">
+            <span>{{ onlyWithVideos ? '✓ 已过滤0视频' : '只看有视频' }}</span>
+          </button>
+
+          <button class="btn btn-secondary btn-xs" @click="startBotScan" :disabled="botScanStatus.is_scanning" title="一键安全检测所有机器人的媒体视频">
+            <span v-if="botScanStatus.is_scanning">⚡ {{ botScanStatus.progress }}</span>
+            <span v-else>⚡ 检测机器人</span>
+          </button>
+        </div>
+      </div>
+
+
+      <div class="chat-list">
+        <div v-for="c in filteredChats" :key="c.id" 
+             class="chat-item" 
+             :class="{active: activeChat && activeChat.id === c.id}"
+             @click="selectChat(c)">
+          <div class="chat-info">
+            <div class="chat-name-row">
+              <span class="chat-title-text">{{ c.visible_name || '未命名会话' }}</span>
+              <span v-if="getChatFilteredCount(c) > 0" class="badge-video-count-filtered">
+                🎬 {{ getChatFilteredCount(c) }} 视频<span v-if="filterDuration > 0" style="opacity: 0.8; font-size: 9px;"> (＞{{ filterDuration }}s)</span>
+              </span>
+              <span v-else-if="c.video_count > 0 && filterDuration > 0" class="badge-video-count-filtered badge-video-count-dim" title="该会话有视频，但无大于当前指定时长的视频">
+                🎬 0 (>{{ filterDuration }}s)
+              </span>
+            </div>
+            <div class="chat-meta">
+              <span v-if="c.is_bot" class="type-badge-bot">🤖 机器人</span>
+              <span v-else class="type-badge-normal">{{ c.type === 'group' ? '👥 群组' : (c.type === 'channel' ? '📢 频道' : '👤 私聊') }}</span>
+              <span v-if="c.username">@{{ c.username }}</span>
+              <span>·</span>
+              <span class="font-mono">ID: {{ c.id }}</span>
+            </div>
+          </div>
+          
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <div v-if="c.queue_status === 'downloading'" class="status-tag tag-downloading">正在下载</div>
+            <div v-else-if="c.queue_status === 'queued'" class="status-tag tag-queued">已排队</div>
+            <button class="chat-item-quick-dl" 
+                    :style="{color: isChatTracked(c.id) ? '#10b981' : '#64748b'}" 
+                    :title="isChatTracked(c.id) ? '已在自动追更监控列表中 (点击切换/配置)' : '加入自动追更监控'" 
+                    @click.stop="quickToggleTrack(c)">
+              <span style="font-size: 13px;">⭐</span>
+            </button>
+            <button class="chat-item-quick-dl" title="一键加入下载队列" @click.stop="addChatToQueue(c, 'queue')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div v-if="filteredChats.length === 0" class="empty-state" style="margin: 20px;">
+          暂无匹配会话
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Main Viewport -->
+    <div class="main-viewport">
+      <!-- Top Metrics & Navigation -->
+      <div class="top-bar">
+        <div class="metrics-group">
+          <div class="metric-item">
+            <div class="metric-label">引擎状态</div>
+            <div class="metric-val" :style="{color: status.running ? 'var(--success)' : 'var(--text-dim)'}">
+              <div v-if="status.running" class="pulse-dot"></div>
+              <span>{{ status.running ? '🟢 正在下载' : '⚪ 空闲就绪' }}</span>
+            </div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">实时下载速度</div>
+            <div class="metric-val speed">{{ status.speed_human || '0 KB/s' }}</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">今日已下载</div>
+            <div class="metric-val">{{ status.today_downloaded_gb || 0 }} GB <span v-if="status.daily_limit_gb" style="font-size: 11px; color: var(--text-dim); font-weight: normal;">/ {{ status.daily_limit_gb }} GB</span></div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-label">代理网络</div>
+            <div class="metric-val" :style="{color: status.proxy_online ? '#38bdf8' : 'var(--danger)'}">
+              {{ status.proxy_online ? '192.168.8.11:7890 在线' : '代理断开' }}
+            </div>
+          </div>
+        </div>
+
+        <div class="nav-tabs">
+          <button class="tab-btn" :class="{active: currentTab === 'preview'}" @click="currentTab = 'preview'">
+            <span>🎬 会话视频与下载</span>
+          </button>
+          <button class="tab-btn" :class="{active: currentTab === 'tracker'}" @click="currentTab = 'tracker'">
+            <span>📡 自动追更监控</span>
+            <span v-if="trackedChats.length" class="tab-badge" style="background: #10b981;">{{ trackedChats.length }}</span>
+          </button>
+          <button class="tab-btn" :class="{active: currentTab === 'migrate'}" @click="currentTab = 'migrate'">
+            <span>📦 文件迁移与防重</span>
+          </button>
+          <button class="tab-btn" :class="{active: currentTab === 'queue'}" @click="currentTab = 'queue'">
+            <span>📋 排队与任务队列</span>
+            <span v-if="queueData.waiting && queueData.waiting.length" class="tab-badge">{{ queueData.waiting.length }}</span>
+          </button>
+          <button class="tab-btn" :class="{active: currentTab === 'logs'}" @click="currentTab = 'logs'">
+            <span>📜 运行日志</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" @click="showSettings = true" title="设置下载策略">
+            ⚙ 设置
+          </button>
+          <button class="btn btn-secondary btn-sm" @click="openFolder('')" title="打开总下载根目录">
+            📁 总目录
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Content Area -->
+      <div class="content-area">
+        <!-- TAB 1: 会话视频与下载 -->
+        <div v-if="currentTab === 'preview'">
+          <div v-if="activeChat" class="chat-banner">
+            <div class="banner-left">
+              <div class="banner-title">
+                <span class="title-text">{{ activeChat.visible_name }}</span>
+                <span v-if="activeChat.is_bot" class="type-badge-bot">🤖 机器人</span>
+                <span v-else class="type-badge-normal">{{ activeChat.type === 'group' ? '👥 群组' : (activeChat.type === 'channel' ? '📢 频道' : '👤 私聊') }}</span>
+                <span v-if="activeChat.video_count > 0" class="badge-video-count">🎬 检测到 {{ activeChat.video_count }} 个视频</span>
+                <span v-if="activeChat.username" class="banner-username">@{{ activeChat.username }}</span>
+              </div>
+              <div class="banner-stats">
+                <span v-if="progress.is_completed" class="badge-completed">
+                  ✅ 全部已下载完毕 (共 {{ progress.completed_count }} 部, {{ progress.total_size_gb }} GB)
+                </span>
+                <span v-else-if="progress.is_currently_downloading" class="badge-downloading">
+                  ⚡ 正在下载中: {{ progress.completed_count || 0 }} / {{ progress.total_target_videos || '--' }} 部 ({{ progress.percentage || 0 }}%)
+                </span>
+                <span v-else>
+                  已下载: <strong>{{ progress.completed_count || 0 }}</strong> / {{ progress.total_target_videos || '--' }} 部 ({{ progress.percentage || 0 }}%) · 占用存储: <strong>{{ progress.total_size_gb || 0 }} GB</strong>
+                </span>
+                <span class="font-mono">Chat ID: {{ activeChat.id }}</span>
+              </div>
+            </div>
+            <div class="banner-actions">
+              <button class="btn btn-primary" @click="addChatToQueue(activeChat, 'queue')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>下载该会话全部视频</span>
+              </button>
+              <button class="btn btn-accent" @click="addChatToQueue(activeChat, 'now')">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                <span>立即优先下载</span>
+              </button>
+              <button class="btn btn-secondary" @click="openFolder(activeChat.visible_name)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>打开下载目录</span>
+              </button>
+              <button class="btn btn-secondary" @click="fetchPreview(true)" :disabled="isPreviewLoading">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                <span>刷新媒体列表</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 影视与媒体精确筛选控制台 (满足：筛选大于10s视频、筛选仅视频等) -->
+          <div class="filter-toolbar">
+            <div class="filter-row">
+              <!-- 1. 媒体类型筛选 (用户关键要求：仅视频) -->
+              <div class="filter-group">
+                <span class="filter-group-label">类型:</span>
+                <div class="pill-group">
+                  <button class="pill-btn" :class="{active: filterType === 'all'}" @click="filterType = 'all'">全部</button>
+                  <button class="pill-btn" :class="{active: filterType === 'video_only'}" @click="filterType = 'video_only'">
+                    <span>🎬 仅视频</span>
+                  </button>
+                  <button class="pill-btn" :class="{active: filterType === 'photo_only'}" @click="filterType = 'photo_only'">
+                    <span>🖼 仅图片</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 2. 时长筛选 (用户关键要求：筛选大于10s) -->
+              <div class="filter-group">
+                <span class="filter-group-label">视频时长:</span>
+                <div class="pill-group">
+                  <button class="pill-btn" :class="{active: filterDuration === 0}" @click="filterDuration = 0">不限时长</button>
+                  <button class="pill-btn" :class="{active: filterDuration === 10}" @click="filterDuration = 10" title="过滤掉10秒以内的动图和超短片段">
+                    <span>⏱ ＞10秒</span>
+                  </button>
+                  <button class="pill-btn" :class="{active: filterDuration === 30}" @click="filterDuration = 30">＞30秒</button>
+                  <button class="pill-btn" :class="{active: filterDuration === 60}" @click="filterDuration = 60">＞1分钟</button>
+                  <button class="pill-btn" :class="{active: filterDuration === 300}" @click="filterDuration = 300">＞5分钟</button>
+                </div>
+              </div>
+
+              <!-- 3. 下载状态筛选 -->
+              <div class="filter-group">
+                <span class="filter-group-label">状态:</span>
+                <div class="pill-group">
+                  <button class="pill-btn" :class="{active: filterStatus === 'all'}" @click="filterStatus = 'all'">全部</button>
+                  <button class="pill-btn" :class="{active: filterStatus === 'undownloaded'}" @click="filterStatus = 'undownloaded'">
+                    <span>📥 未下载</span>
+                  </button>
+                  <button class="pill-btn" :class="{active: filterStatus === 'downloaded'}" @click="filterStatus = 'downloaded'">
+                    <span>✅ 已下载</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 搜索、排序与一键精准批量下载 -->
+            <div class="filter-action-row">
+              <div class="filter-search-box">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" v-model="previewSearch" placeholder="搜索片名、说明关键词或ID..." class="filter-search-input">
+                <button v-if="previewSearch" class="filter-clear-btn" @click="previewSearch = ''">✕</button>
+              </div>
+
+              <div class="filter-sort-box">
+                <span class="filter-group-label">排序:</span>
+                <select v-model="sortBy" class="filter-select">
+                  <option value="id_desc">最新发布 (从新到旧)</option>
+                  <option value="duration_desc">视频时长 (从长到短)</option>
+                  <option value="size_desc">文件体积 (从大到小)</option>
+                </select>
+              </div>
+
+              <div class="filter-summary">
+                <span class="summary-text">
+                  符合筛选: <strong class="text-primary">{{ filteredPreviewCards.length }}</strong> 部
+                  <span v-if="filteredTotalSize" class="font-mono">({{ filteredTotalSize }})</span>
+                </span>
+
+                <button class="btn btn-primary btn-sm" 
+                        :disabled="filteredUndownloadedCount === 0"
+                        @click="downloadFilteredCards('queue')" 
+                        :title="filteredUndownloadedCount > 0 ? '将当前筛选出的所有未下载视频一键加入排队' : '当前筛选结果中无未完成视频'">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                  <span>一键排队下载已筛选 ({{ filteredUndownloadedCount }}部)</span>
+                </button>
+
+                <button v-if="filterType !== 'all' || filterDuration > 0 || filterStatus !== 'all' || previewSearch"
+                        class="btn btn-secondary btn-sm" 
+                        @click="resetFilters" 
+                        title="重置为默认全部展示">
+                  <span>重置筛选</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="isPreviewLoading" class="empty-state">
+            <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 8px;">正在读取并解析视频媒体列表与缩略图...</div>
+            <div>数据隔离通道抓取中，不会干扰正在进行的后台下载</div>
+          </div>
+
+          <div v-else-if="filteredPreviewCards.length === 0" class="empty-state">
+            <div style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px;">未找到符合当前条件的视频（共 {{ previewCards.length }} 个媒体已被过滤）</div>
+            <div style="margin-bottom: 16px; color: var(--text-dim); line-height: 1.6;">
+              当前过滤规则：
+              <span class="text-primary font-bold">{{ filterType === 'video_only' ? '🎬 仅视频' : (filterType === 'photo_only' ? '🖼 仅图片' : '全部类型') }}</span>
+              <span v-if="filterDuration > 0"> · 时长需 <strong class="text-primary">＞ {{ filterDuration }} 秒</strong></span>
+              <span v-if="filterStatus !== 'all'"> · 状态为 <strong class="text-primary">{{ filterStatus === 'undownloaded' ? '未下载' : '已下载' }}</strong></span>
+              <span v-if="previewSearch"> · 搜索词 "{{ previewSearch }}"</span>
+              <div v-if="filterDuration > 0" style="margin-top: 6px; font-size: 11px; color: #94a3b8;">
+                提示：该会话当前抓取的视频可能多为短视频片段或动图（时长低于 {{ filterDuration }} 秒）。您可以点击下方按钮放宽时长限制。
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" @click="filterDuration = 0" style="margin-right: 8px;" v-if="filterDuration > 0">
+              切换为不限时长 (显示全部 {{ previewCards.length }} 部)
+            </button>
+            <button class="btn btn-secondary btn-sm" @click="resetFilters" style="margin-right: 8px;">重置全部筛选</button>
+            <button class="btn btn-secondary btn-sm" @click="fetchPreview(true)">深度刷新本会话</button>
+          </div>
+
+          <div v-else class="preview-grid">
+            <div v-for="item in filteredPreviewCards" :key="item.id" class="movie-card">
+              <div class="movie-thumb-wrapper" @click="item.thumb ? openLightbox(item.thumb) : null">
+                <!-- 只要有缩略图数据，所有视频类型与图片全部直接显示图像！ -->
+                <div v-if="item.thumb" style="width: 100%; height: 100%; position: relative;">
+                  <img :src="item.thumb" class="movie-thumb" alt="视频预览封面">
+                  <!-- 视频播放标记浮层 -->
+                  <div v-if="item.is_video" class="thumb-play-overlay">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                  </div>
+                </div>
+
+                <!-- 仅在确实无缩略图时显示占位 -->
+                <div v-else class="movie-thumb-placeholder">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                  <span>无预览图</span>
+                </div>
+
+                <span class="thumb-badge badge-type">🎬 视频</span>
+                <span v-if="item.duration_human" class="thumb-badge badge-duration">{{ item.duration_human }}</span>
+                <span v-if="item.resolution" class="thumb-badge badge-res">{{ item.resolution }}</span>
+              </div>
+
+              <div class="movie-body">
+                <div>
+                  <div class="movie-title">{{ item.file_name }}</div>
+                  <div class="movie-desc" :title="item.text">{{ item.text || '无附加文字说明' }}</div>
+                </div>
+
+                <div>
+                  <div class="movie-meta-row">
+                    <span>💾 {{ item.size_human }}</span>
+                    <span>📅 {{ item.date }}</span>
+                    <span v-if="item.views">👁 {{ item.views }}</span>
+                  </div>
+
+                  <div class="movie-actions">
+                    <div v-if="item.is_downloaded" class="status-tag tag-completed">
+                      ✅ 已下载完成
+                    </div>
+                    <div v-else-if="item.is_downloading" class="status-tag tag-downloading">
+                      ⚡ 正在下载中
+                    </div>
+                    <div v-else style="display: flex; gap: 6px; width: 100%;">
+                      <button class="btn btn-secondary btn-sm" style="flex: 1;" @click="downloadSingle(item, 'queue')">
+                        <span>排队下载此部</span>
+                      </button>
+                      <button class="btn btn-primary btn-sm" @click="downloadSingle(item, 'now')">
+                        <span>立即下</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 2: 排队与任务队列管理 -->
+        <div v-if="currentTab === 'queue'">
+          <!-- Active Task Panel -->
+          <div class="queue-section">
+            <div class="section-header">
+              <div class="pulse-dot"></div>
+              <span>当前正在执行的下载任务</span>
+            </div>
+
+            <div v-if="queueData.active" class="active-task-card">
+              <div class="active-task-header">
+                <div class="active-task-title">
+                  <span>{{ queueData.active.chat_name }}</span>
+                  <span class="brand-badge">PID: {{ queueData.active.pid || '--' }}</span>
+                  <span v-if="activeTaskProgress.is_completed" class="badge-completed">✅ 全部下载完毕</span>
+                  <span v-else class="badge-downloading">⚡ 正在高速下载</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                  <button class="btn btn-danger btn-sm" @click="stopAll">停止/暂停</button>
+                  <button class="btn btn-secondary btn-sm" @click="skipCurrentTask">跳过本任务</button>
+                  <button class="btn btn-secondary btn-sm" @click="openFolder(queueData.active.chat_name)">打开目录</button>
+                </div>
+              </div>
+
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" :style="{width: (activeTaskProgress.percentage || 10) + '%'}"></div>
+              </div>
+
+              <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+                <span>当前进度: {{ activeTaskProgress.completed_count || 0 }} / {{ activeTaskProgress.total_target_videos || '--' }} 部 ({{ activeTaskProgress.percentage || 0 }}%) · 占用: {{ activeTaskProgress.total_size_gb || 0 }} GB</span>
+                <span>总体速度: <strong style="color: #38bdf8; font-family: Consolas; font-size: 14px;">{{ status.speed_human || '0 KB/s' }}</strong></span>
+              </div>
+
+              <!-- In-Flight Files List with Individual Speeds -->
+              <div v-if="queueData.in_flight && queueData.in_flight.length" class="inflight-container">
+                <div class="inflight-title">
+                  <span>正在传输写入的视频分块 ({{ queueData.in_flight.length }} 个并发传输流)：</span>
+                  <span style="font-size: 11px; font-weight: normal; color: var(--text-muted);">独立 I/O 速率</span>
+                </div>
+                <div class="inflight-list">
+                  <div v-for="f in queueData.in_flight" :key="f.raw_name" class="inflight-item">
+                    <span class="inflight-fname" :title="f.file">{{ f.file }}</span>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                      <span style="color: var(--text-dim);">{{ f.size_mb }} MB</span>
+                      <span class="inflight-speed">{{ f.speed_human }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              当前暂无正在执行的下载任务
+              <button v-if="queueData.is_paused && queueData.waiting.length" class="btn btn-primary btn-sm" style="margin-left: 10px;" @click="resumeQueue">
+                恢复队列执行
+              </button>
+            </div>
+          </div>
+
+          <!-- Waiting Queue Panel -->
+          <div class="queue-section">
+            <div class="section-header" style="justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <span>等待下载队列 (未下载清单)</span>
+                <span class="brand-badge">{{ (queueData.waiting || []).length }} 个任务</span>
+              </div>
+              <span style="font-size: 11px; color: var(--text-dim);">当前任务完成后将按下列顺序自动顺延下载</span>
+            </div>
+
+            <div v-if="queueData.waiting && queueData.waiting.length" class="queue-list">
+              <div v-for="(task, idx) in queueData.waiting" :key="task.id" class="queue-card">
+                <div class="queue-order">#{{ idx + 1 }}</div>
+                <div class="queue-info">
+                  <div class="queue-title">{{ task.chat_name }}</div>
+                  <div class="queue-subtitle">
+                    <span>类型: {{ task.task_type === 'single' ? ('单部: ' + task.file_name) : '全量所有视频' }}</span>
+                    <span>·</span>
+                    <span>ID: {{ task.chat_id }}</span>
+                  </div>
+                </div>
+
+                <div class="queue-card-actions">
+                  <button class="btn btn-secondary btn-sm" :disabled="idx === 0" @click="moveQueue(task.id, 'up')" title="上移一位">▲</button>
+                  <button class="btn btn-secondary btn-sm" :disabled="idx === queueData.waiting.length - 1" @click="moveQueue(task.id, 'down')" title="下移一位">▼</button>
+                  <button class="btn btn-accent btn-sm" @click="moveQueue(task.id, 'top')" title="插队到队首">置顶</button>
+                  <button class="btn btn-danger btn-sm" @click="removeQueue(task.id)" title="从队列移除">✕</button>
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="empty-state">
+              暂无排队任务。在左侧选择会话并点击【下载该会话全部视频】，任务将在此自动排序并逐一下载。
+            </div>
+          </div>
+
+          <!-- Completed Tasks History Panel -->
+          <div class="queue-section" v-if="queueData.completed && queueData.completed.length">
+            <div class="section-header">
+              <span>已完成 / 历史下载任务</span>
+            </div>
+            <div class="queue-list">
+              <div v-for="t in queueData.completed" :key="t.id" class="queue-card" style="opacity: 0.85;">
+                <div class="queue-info">
+                  <div class="queue-title" style="display: flex; align-items: center; gap: 8px;">
+                    <span>{{ t.chat_name }}</span>
+                    <span class="badge-completed">✅ 全部下载完毕</span>
+                  </div>
+                  <div class="queue-subtitle">类型: {{ t.task_type === 'single' ? '单部' : '全量视频' }} · ID: {{ t.chat_id }}</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" @click="openFolder(t.chat_name)">打开目录</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: 日志流 -->
+        <div v-if="currentTab === 'logs'">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <div class="section-header" style="margin: 0;">底层实时日志输出 (latest.log)</div>
+            <button class="btn btn-secondary btn-sm" @click="fetchLogs">刷新日志</button>
+          </div>
+          <div class="log-box">
+            <div v-for="(l, i) in logs" :key="i">{{ l }}</div>
+          </div>
+        </div>
+
+        <!-- TAB 4: 自动追更监控 -->
+        <div v-if="currentTab === 'tracker'" class="scroll-container" style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #fff;">📡 会话自动追更监控器</h2>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                指定频道/机器人进行后台轻量轮询，发现新发布的视频自动生成增量清单并高速下载。
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary btn-sm" @click="fetchTrackedChats">🔄 刷新列表</button>
+              <button class="btn btn-primary btn-sm" @click="checkTrackNow(null)">⚡ 立即全量追更探测</button>
+            </div>
+          </div>
+
+          <!-- 监控状态横幅 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; gap: 24px;">
+              <div>
+                <div style="font-size: 11px; color: var(--text-dim);">当前跟踪会话数</div>
+                <div style="font-size: 20px; font-weight: 700; color: var(--primary);">{{ trackedChats.length }} 个</div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: var(--text-dim);">后台监控引擎状态</div>
+                <div style="font-size: 14px; font-weight: 600; color: #10b981; margin-top: 4px;">{{ trackerEngineStatus.status || '待机监控中' }}</div>
+              </div>
+              <div>
+                <div style="font-size: 11px; color: var(--text-dim);">MCP Gateway 联动</div>
+                <div style="font-size: 13px; font-weight: 500; color: #38bdf8; margin-top: 4px;">
+                  192.168.8.11:8791 (就绪)
+                </div>
+              </div>
+            </div>
+            <button v-if="activeChat && !isChatTracked(activeChat.id)" class="btn btn-primary btn-sm" @click="addCurrentChatToTrack">
+              + 将当前会话「{{ activeChat.visible_name }}」加入跟踪
+            </button>
+          </div>
+
+          <!-- 跟踪列表表格 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+              <thead>
+                <tr style="background: var(--bg-surface); border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                  <th style="padding: 12px 16px;">会话名称</th>
+                  <th style="padding: 12px 16px;">Chat ID</th>
+                  <th style="padding: 12px 16px;">刷新周期</th>
+                  <th style="padding: 12px 16px;">自动下载</th>
+                  <th style="padding: 12px 16px;">MCP 探针</th>
+                  <th style="padding: 12px 16px;">已捕获新视频</th>
+                  <th style="padding: 12px 16px;">上次检查</th>
+                  <th style="padding: 12px 16px;">状态 / 操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="t in trackedChats" :key="t.chat_id" style="border-bottom: 1px solid var(--border-subtle);">
+                  <td style="padding: 12px 16px; font-weight: 600; color: #fff;">{{ t.chat_name }}</td>
+                  <td style="padding: 12px 16px; font-family: monospace; color: var(--text-dim);">{{ t.chat_id }}</td>
+                  <td style="padding: 12px 16px;">
+                    <select v-model.number="t.interval_seconds" @change="updateTrackItem(t)" style="background: var(--bg-surface); color: #fff; border: 1px solid var(--border-color); border-radius: 4px; padding: 4px 8px; font-size: 11px;">
+                      <option :value="300">每 5 分钟</option>
+                      <option :value="600">每 10 分钟</option>
+                      <option :value="1800">每 30 分钟</option>
+                      <option :value="3600">每 1 小时</option>
+                      <option :value="7200">每 2 小时</option>
+                      <option :value="21600">每 6 小时</option>
+                      <option :value="86400">每天 (24h)</option>
+                    </select>
+                  </td>
+                  <td style="padding: 12px 16px;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                      <input type="checkbox" :checked="!!t.auto_download" @change="t.auto_download = $event.target.checked ? 1 : 0; updateTrackItem(t)">
+                      <span>自动排队</span>
+                    </label>
+                  </td>
+                  <td style="padding: 12px 16px;">
+                    <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                      <input type="checkbox" :checked="!!t.use_mcp" @change="t.use_mcp = $event.target.checked ? 1 : 0; updateTrackItem(t)">
+                      <span title="勾选后通过 192.168.8.11:8791 优先探测">启用</span>
+                    </label>
+                  </td>
+                  <td style="padding: 12px 16px; color: #10b981; font-weight: 600;">+{{ t.new_videos_found || 0 }} 部</td>
+                  <td style="padding: 12px 16px; color: var(--text-dim);">
+                    {{ formatTimestamp(t.last_checked_at) }}
+                  </td>
+                  <td style="padding: 12px 16px; display: flex; gap: 8px;">
+                    <button class="btn btn-secondary btn-sm" @click="checkTrackNow(t.chat_id)" title="立即探测一次">⚡ 探测</button>
+                    <button class="btn btn-secondary btn-sm" @click="toggleTrackStatus(t)" :style="{color: t.is_active ? '#10b981' : '#ef4444'}">
+                      {{ t.is_active ? '监控中' : '已暂停' }}
+                    </button>
+                    <button class="btn btn-danger btn-sm" @click="removeTrackItem(t.chat_id)" title="移除此跟踪">✕</button>
+                  </td>
+                </tr>
+                <tr v-if="trackedChats.length === 0">
+                  <td colspan="8" style="padding: 36px; text-align: center; color: var(--text-dim);">
+                    暂无跟踪中的会话。可在左侧会话列表点击 ⭐ 一键加入跟踪，或在此处添加！
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 5: 文件迁移与防重归档 -->
+        <div v-if="currentTab === 'migrate'" class="scroll-container" style="padding: 20px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <div>
+              <h2 style="font-size: 18px; font-weight: 600; color: #fff;">📦 存储空间迁移与防重归档</h2>
+              <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                将已下载的视频安全迁移至其他磁盘或 NAS。所有文件均已绑定 SQLite 永久防重索引，移走后系统绝不会重复下载！
+              </p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+              <button class="btn btn-secondary btn-sm" @click="scanLocalExistingFiles">🔍 重新扫描入库</button>
+              <button class="btn btn-secondary btn-sm" @click="fetchMigrationSummary">🔄 刷新存储概况</button>
+            </div>
+          </div>
+
+          <!-- 防重数据库大盘 -->
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px;">
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+              <div style="font-size: 11px; color: var(--text-dim);">防重数据库已登记视频</div>
+              <div style="font-size: 22px; font-weight: 700; color: var(--primary); margin-top: 4px;">{{ downloadsStats.total_records || 0 }} 部</div>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+              <div style="font-size: 11px; color: var(--text-dim);">受保护视频总体积</div>
+              <div style="font-size: 22px; font-weight: 700; color: #10b981; margin-top: 4px;">{{ formatBytes(downloadsStats.total_size_bytes) }}</div>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+              <div style="font-size: 11px; color: var(--text-dim);">当前本地保留</div>
+              <div style="font-size: 22px; font-weight: 700; color: #f59e0b; margin-top: 4px;">{{ downloadsStats.completed_count || 0 }} 部</div>
+            </div>
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px;">
+              <div style="font-size: 11px; color: var(--text-dim);">已迁移归档 (免重复下载)</div>
+              <div style="font-size: 22px; font-weight: 700; color: #a855f7; margin-top: 4px;">{{ downloadsStats.migrated_count || 0 }} 部</div>
+            </div>
+          </div>
+
+          <!-- 迁移操作卡片 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+            <div style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 16px;">🚀 执行文件迁移</div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <div class="form-group">
+                <label class="form-label">选择要迁移的源文件夹：</label>
+                <select class="form-input" v-model="migrateForm.source_folder">
+                  <option value="">-- 请选择会话文件夹 --</option>
+                  <option v-for="f in migrationFolders" :key="f.folder_path" :value="f.folder_path">
+                    {{ f.folder_name }} ({{ f.file_count }} 个文件 · {{ f.total_size_gb }} GB)
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">迁移目标绝对目录路径 (如 NAS/其他盘符)：</label>
+                <input type="text" class="form-input" v-model="migrateForm.target_dir" placeholder="例如：E:\ArchiveVideos 或 D:\Videos\Archive">
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-subtle);">
+              <div style="display: flex; gap: 20px; align-items: center;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff; font-size: 13px;">
+                  <input type="radio" value="move" v-model="migrateForm.mode">
+                  <span>移动（剪切并释放当前磁盘空间，推荐）</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff; font-size: 13px;">
+                  <input type="radio" value="copy" v-model="migrateForm.mode">
+                  <span>复制（原文件保留）</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: #fff; font-size: 13px;">
+                  <input type="checkbox" v-model="migrateForm.preserve_subfolder">
+                  <span>在目标目录中保持会话子文件夹</span>
+                </label>
+              </div>
+
+              <button class="btn btn-primary" :disabled="isMigrating || !migrateForm.source_folder || !migrateForm.target_dir" @click="startMigration">
+                {{ isMigrating ? '正在安全迁移中...' : '开始一键迁移' }}
+              </button>
+            </div>
+
+            <div v-if="migrationResult" style="margin-top: 16px; padding: 12px; border-radius: 6px; background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; color: #10b981; font-size: 12px;">
+              {{ migrationResult }}
+            </div>
+          </div>
+
+          <!-- 本地下载目录各会话详情 -->
+          <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden;">
+            <div style="padding: 14px 16px; font-weight: 600; color: #fff; background: var(--bg-surface); border-bottom: 1px solid var(--border-color);">
+              📁 本地会话存储明细列表
+            </div>
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 12px;">
+              <thead>
+                <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-muted);">
+                  <th style="padding: 12px 16px;">文件夹名称</th>
+                  <th style="padding: 12px 16px;">本地绝对路径</th>
+                  <th style="padding: 12px 16px;">文件数</th>
+                  <th style="padding: 12px 16px;">占用体积</th>
+                  <th style="padding: 12px 16px;">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="f in migrationFolders" :key="f.folder_path" style="border-bottom: 1px solid var(--border-subtle);">
+                  <td style="padding: 12px 16px; font-weight: 600; color: #fff;">{{ f.folder_name }}</td>
+                  <td style="padding: 12px 16px; font-family: monospace; color: var(--text-dim);">{{ f.folder_path }}</td>
+                  <td style="padding: 12px 16px; color: var(--primary);">{{ f.file_count }} 个文件</td>
+                  <td style="padding: 12px 16px; color: #10b981; font-weight: 600;">{{ f.total_size_gb }} GB</td>
+                  <td style="padding: 12px 16px;">
+                    <button class="btn btn-secondary btn-sm" @click="migrateForm.source_folder = f.folder_path">
+                      选择此目录迁移
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div v-if="showSettings" class="modal-backdrop" @click.self="showSettings = false">
+      <div class="modal-card">
+        <div class="modal-title">⚙ 下载策略与每日配额</div>
+        <div class="form-group">
+          <label class="form-label">每日下载上限 (GB，填 0 表示不限制):</label>
+          <input type="number" class="form-input" v-model.number="settingsForm.daily_limit_gb" min="0" step="5">
+        </div>
+        <div class="form-group" style="display: flex; align-items: center; gap: 10px; margin-top: 14px;">
+          <input type="checkbox" id="autoRetry" v-model="settingsForm.auto_retry_enabled">
+          <label for="autoRetry" style="font-size: 13px; color: #fff; cursor: pointer;">异常断线自动重启并接续下载</label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px;">
+          <button class="btn btn-secondary" @click="showSettings = false">取消</button>
+          <button class="btn btn-primary" @click="saveSettings">保存策略</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lightbox Fullscreen Modal -->
+    <div v-if="lightboxUrl" class="lightbox-modal" @click.self="lightboxUrl = null">
+      <button class="lightbox-close" @click="lightboxUrl = null">✕</button>
+      <img :src="lightboxUrl" class="lightbox-img" alt="查看高清大图">
+    </div>
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+    createApp({
+      setup() {
+        const currentTab = ref('preview');
+        const onlyWithVideos = ref(false);
+        const botScanStatus = ref({ is_scanning: false, progress: '0/0', scanned_count: 0, total_bots: 0 });
+
+        const getChatFilteredCount = (c) => {
+          if (!c) return 0;
+          if (filterType.value === 'photo_only') return c.photo_count || 0;
+          if (filterDuration.value >= 300) return (c.videos_gt_300s !== undefined ? c.videos_gt_300s : (c.video_count || 0));
+          if (filterDuration.value >= 60) return (c.videos_gt_60s !== undefined ? c.videos_gt_60s : (c.video_count || 0));
+          if (filterDuration.value >= 30) return (c.videos_gt_30s !== undefined ? c.videos_gt_30s : (c.videos_gt_10s !== undefined ? c.videos_gt_10s : (c.video_count || 0)));
+          if (filterDuration.value >= 10) return (c.videos_gt_10s !== undefined ? c.videos_gt_10s : (c.video_count || 0));
+          return c.video_count || 0;
+        };
+
+        const startBotScan = async () => {
+          try {
+            const res = await fetch('/api/bots/scan', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message || '已启动全量机器人扫描');
+            pollBotScanStatus();
+          } catch (e) {
+            alert('启动扫描异常: ' + e);
+          }
+        };
+
+        const pollBotScanStatus = async () => {
+          try {
+            const res = await fetch('/api/bots/scan/status');
+            const data = await res.json();
+            botScanStatus.value = data;
+            if (data.is_scanning) {
+              setTimeout(pollBotScanStatus, 2000);
+            } else {
+              fetchChats(true);
+            }
+          } catch (e) {}
+        };
+
+        const status = ref({});
+        const chats = ref([]);
+        const searchQuery = ref('');
+        const selectedType = ref('all');
+        const botOnlyWithVideos = ref(false);
+        const activeChat = ref(null);
+        const progress = ref({});
+        const previewCards = ref([]);
+        const filterType = ref('all'); // 'all' | 'video_only' | 'photo_only'
+        const filterDuration = ref(0); // 0 | 10 | 30 | 60 | 300
+        const filterStatus = ref('all'); // 'all' | 'undownloaded' | 'downloaded'
+        const previewSearch = ref('');
+        const sortBy = ref('id_desc'); // 'id_desc' | 'duration_desc' | 'size_desc'
+
+        const resetFilters = () => {
+          filterType.value = 'all';
+          filterDuration.value = 0;
+          filterStatus.value = 'all';
+          previewSearch.value = '';
+          sortBy.value = 'id_desc';
+        };
+
+        const filteredPreviewCards = computed(() => {
+          let list = previewCards.value || [];
+
+          // 1. 媒体类型过滤
+          if (filterType.value === 'video_only') {
+            list = list.filter(c => c.is_video);
+          } else if (filterType.value === 'photo_only') {
+            list = list.filter(c => c.is_photo);
+          }
+
+          // 2. 视频时长精确过滤 (满足 >10s, >30s, >1m, >5m)
+          if (filterDuration.value > 0) {
+            list = list.filter(c => {
+              if (c.is_photo) return false;
+              const dur = Number(c.duration_sec) || 0;
+              return dur >= Number(filterDuration.value);
+            });
+          }
+
+          // 3. 下载状态过滤
+          if (filterStatus.value === 'undownloaded') {
+            list = list.filter(c => !c.is_downloaded);
+          } else if (filterStatus.value === 'downloaded') {
+            list = list.filter(c => c.is_downloaded);
+          }
+
+          // 4. 关键词搜索
+          if (previewSearch.value.trim()) {
+            const q = previewSearch.value.trim().toLowerCase();
+            list = list.filter(c => 
+              (c.file_name && c.file_name.toLowerCase().includes(q)) ||
+              (c.text && c.text.toLowerCase().includes(q)) ||
+              String(c.id).includes(q)
+            );
+          }
+
+          // 5. 排序
+          list = [...list].sort((a, b) => {
+            if (sortBy.value === 'duration_desc') {
+              return (b.duration_sec || 0) - (a.duration_sec || 0);
+            } else if (sortBy.value === 'size_desc') {
+              return (b.size_bytes || 0) - (a.size_bytes || 0);
+            }
+            return (b.id || 0) - (a.id || 0);
+          });
+
+          return list;
+        });
+
+        const filteredTotalSize = computed(() => {
+          const bytes = filteredPreviewCards.value.reduce((acc, c) => acc + (c.size_bytes || 0), 0);
+          if (bytes <= 0) return '';
+          if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+          if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+          return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        });
+
+        const filteredUndownloadedCount = computed(() => {
+          return filteredPreviewCards.value.filter(c => !c.is_downloaded && c.is_video).length;
+        });
+
+        const downloadFilteredCards = async (priority = 'queue') => {
+          if (!activeChat.value) return;
+          const itemsToDownload = filteredPreviewCards.value.filter(c => !c.is_downloaded && c.is_video);
+          if (itemsToDownload.length === 0) {
+            alert('当前筛选结果中没有需要下载的未完成视频！');
+            return;
+          }
+          const msgIds = itemsToDownload.map(c => c.id);
+          const confirmMsg = `确定要将当前筛选出的 ${itemsToDownload.length} 部视频加入下载队列吗？\n(已过滤掉非视频及小于指定时长的片段)`;
+          if (!confirm(confirmMsg)) return;
+
+          try {
+            const res = await fetch('/api/queue/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: activeChat.value.id,
+                chat_name: activeChat.value.visible_name || 'Chat',
+                task_type: 'batch',
+                message_ids: msgIds,
+                priority: priority
+              })
+            });
+            const data = await res.json();
+            alert(data.message || '已成功加入下载队列！');
+            fetchQueue();
+            fetchChats();
+          } catch (e) {
+            alert('下载请求异常: ' + e);
+          }
+        };
+
+        const isPreviewLoading = ref(false);
+        const queueData = ref({ active: null, waiting: [], completed: [], is_paused: false, in_flight: [] });
+        const activeTaskProgress = ref({});
+        const logs = ref([]);
+        const lightboxUrl = ref(null);
+        const showSettings = ref(false);
+        const settingsForm = ref({ daily_limit_gb: 100, auto_retry_enabled: true });
+
+        const openLightbox = (url) => { lightboxUrl.value = url; };
+
+        let timer = null;
+
+        const botTotalCount = computed(() => {
+          return chats.value.filter(c => c.is_bot).length;
+        });
+
+        const botWithVideosCount = computed(() => {
+          return chats.value.filter(c => c.is_bot && (c.video_count || 0) > 0).length;
+        });
+
+        const filteredChats = computed(() => {
+          let list = chats.value;
+          
+          if (selectedType.value === 'bot') {
+            list = list.filter(c => c.is_bot);
+            if (botOnlyWithVideos.value) {
+              list = list.filter(c => (c.video_count || 0) > 0);
+            }
+            // Sort bots with video_count > 0 to the very top!
+            list = [...list].sort((a, b) => (b.video_count || 0) - (a.video_count || 0));
+          } else if (selectedType.value === 'channel') {
+            list = list.filter(c => c.type === 'channel' && !c.is_bot);
+          } else if (selectedType.value === 'group') {
+            list = list.filter(c => (c.type === 'group' || c.type === 'chat') && !c.is_bot);
+          } else if (selectedType.value === 'private') {
+            list = list.filter(c => c.type === 'private' && !c.is_bot);
+          }
+
+          if (searchQuery.value.trim()) {
+            const q = searchQuery.value.trim().toLowerCase();
+            list = list.filter(c => 
+              (c.visible_name && c.visible_name.toLowerCase().includes(q)) ||
+              (c.username && c.username.toLowerCase().includes(q)) ||
+              (c.video_note && c.video_note.toLowerCase().includes(q)) ||
+              String(c.id).includes(q)
+            );
+          }
+          return list;
+        });
+
+        const fetchStatus = async () => {
+          try {
+            const res = await fetch('/api/status');
+            status.value = await res.json();
+            settingsForm.value.daily_limit_gb = status.value.daily_limit_gb || 0;
+            settingsForm.value.auto_retry_enabled = status.value.auto_retry_enabled !== false;
+          } catch (e) {}
+        };
+
+        const fetchQueue = async () => {
+          try {
+            const res = await fetch('/api/queue');
+            queueData.value = await res.json();
+            if (queueData.value.active) {
+              fetchActiveTaskProgress(queueData.value.active);
+            }
+          } catch (e) {}
+        };
+
+        const fetchActiveTaskProgress = async (act) => {
+          try {
+            const res = await fetch(`/api/progress?chat_id=${act.chat_id}&chat_name=${encodeURIComponent(act.chat_name)}`);
+            activeTaskProgress.value = await res.json();
+          } catch (e) {}
+        };
+
+        const fetchChats = async (force = false) => {
+          try {
+            const res = await fetch('/api/chats');
+            const data = await res.json();
+            chats.value = data.chats || [];
+            if (!activeChat.value && chats.value.length > 0) {
+              const defaultChat = chats.value.find(c => c.visible_name && c.visible_name.includes('学生会员')) || chats.value[0];
+              selectChat(defaultChat);
+            }
+          } catch (e) {}
+        };
+
+        const selectChat = (c) => {
+          activeChat.value = c;
+          fetchProgress(c);
+          fetchPreview(false);
+        };
+
+        const fetchProgress = async (c) => {
+          if (!c) return;
+          try {
+            const res = await fetch(`/api/progress?chat_id=${c.id}&chat_name=${encodeURIComponent(c.visible_name || 'Chat')}`);
+            progress.value = await res.json();
+          } catch (e) {}
+        };
+
+        const fetchPreview = async (refresh = false) => {
+          if (!activeChat.value) return;
+          isPreviewLoading.value = true;
+          try {
+            const res = await fetch(`/api/chat/preview?chat_id=${activeChat.value.id}&chat_name=${encodeURIComponent(activeChat.value.visible_name || 'Chat')}&refresh=${refresh}`);
+            const data = await res.json();
+            previewCards.value = data.cards || [];
+          } catch (e) {
+            console.error(e);
+          } finally {
+            isPreviewLoading.value = false;
+          }
+        };
+
+        const addChatToQueue = async (c, priority = 'queue') => {
+          if (!c) return;
+          try {
+            const res = await fetch('/api/queue/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: c.id,
+                chat_name: c.visible_name || 'Chat',
+                task_type: 'all',
+                priority: priority
+              })
+            });
+            const data = await res.json();
+            alert(data.message || '操作成功');
+            fetchQueue();
+            fetchChats();
+          } catch (e) {
+            alert('添加队列异常: ' + e);
+          }
+        };
+
+        const downloadSingle = async (item, priority = 'queue') => {
+          if (!activeChat.value) return;
+          try {
+            const res = await fetch('/api/queue/add', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: activeChat.value.id,
+                chat_name: activeChat.value.visible_name || 'Chat',
+                task_type: 'single',
+                message_id: item.id,
+                file_name: item.file_name,
+                priority: priority
+              })
+            });
+            const data = await res.json();
+            alert(data.message || '操作成功');
+            fetchQueue();
+            fetchChats();
+          } catch (e) {
+            alert('下载异常: ' + e);
+          }
+        };
+
+        const moveQueue = async (id, dir) => {
+          try {
+            await fetch(`/api/queue/move?task_id=${id}&direction=${dir}`, { method: 'POST' });
+            fetchQueue();
+          } catch (e) {}
+        };
+
+        const removeQueue = async (id) => {
+          if (!confirm('确定将该任务从等待队列移除吗？')) return;
+          try {
+            await fetch(`/api/queue/remove?task_id=${id}`, { method: 'POST' });
+            fetchQueue();
+          } catch (e) {}
+        };
+
+        const skipCurrentTask = async () => {
+          if (!confirm('确定跳过当前任务并自动开始下一个吗？')) return;
+          try {
+            await fetch('/api/queue/skip', { method: 'POST' });
+            fetchQueue();
+          } catch (e) {}
+        };
+
+        const stopAll = async () => {
+          if (!confirm('确定停止当前任务并暂停队列吗？')) return;
+          try {
+            await fetch('/api/download/stop', { method: 'POST' });
+            fetchQueue();
+            fetchStatus();
+          } catch (e) {}
+        };
+
+        const resumeQueue = async () => {
+          try {
+            await fetch('/api/download/resume', { method: 'POST' });
+            fetchQueue();
+            fetchStatus();
+          } catch (e) {}
+        };
+
+        const openFolder = async (chatName) => {
+          try {
+            await fetch(`/api/open-folder?chat_name=${encodeURIComponent(chatName || '')}`, { method: 'POST' });
+          } catch (e) {}
+        };
+
+        const saveSettings = async () => {
+          try {
+            const res = await fetch('/api/settings', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                daily_limit_gb: settingsForm.value.daily_limit_gb,
+                auto_retry_enabled: settingsForm.value.auto_retry_enabled
+              })
+            });
+            const data = await res.json();
+            alert(data.message || '策略已更新');
+            showSettings.value = false;
+            fetchStatus();
+          } catch (e) {
+            alert('保存异常: ' + e);
+          }
+        };
+
+        const fetchLogs = async () => {
+          try {
+            const res = await fetch('/api/logs?tail=80');
+            const data = await res.json();
+            logs.value = data.logs || [];
+          } catch (e) {}
+        };
+
+        // ==================== 📡 自动追更监控 ====================
+        const trackedChats = ref([]);
+        const trackerEngineStatus = ref({});
+        const isChatTracked = (chatId) => trackedChats.value.some(t => t.chat_id === chatId);
+
+        const fetchTrackedChats = async () => {
+          try {
+            const res = await fetch('/api/tracker/list');
+            const data = await res.json();
+            if (data.success) {
+              trackedChats.value = data.tracked || [];
+              trackerEngineStatus.value = data.status || {};
+            }
+          } catch (e) {}
+        };
+
+        const quickToggleTrack = async (chat) => {
+          if (isChatTracked(chat.id)) {
+            try {
+              const res = await fetch(`/api/tracker/toggle?chat_id=${chat.id}`, { method: 'POST' });
+              fetchTrackedChats();
+            } catch (e) {}
+          } else {
+            try {
+              await fetch('/api/tracker/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chat.id,
+                  chat_name: chat.visible_name || String(chat.id),
+                  interval_seconds: 1800,
+                  auto_download: true,
+                  is_active: true,
+                  use_mcp: false
+                })
+              });
+              fetchTrackedChats();
+              alert(`已成功将「${chat.visible_name}」加入自动追更监控！`);
+            } catch (e) {
+              alert('加入跟踪失败: ' + e);
+            }
+          }
+        };
+
+        const addCurrentChatToTrack = () => {
+          if (activeChat.value) {
+            quickToggleTrack(activeChat.value);
+          }
+        };
+
+        const updateTrackItem = async (item) => {
+          try {
+            await fetch('/api/tracker/save', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(item)
+            });
+            fetchTrackedChats();
+          } catch (e) {}
+        };
+
+        const toggleTrackStatus = async (item) => {
+          try {
+            await fetch(`/api/tracker/toggle?chat_id=${item.chat_id}`, { method: 'POST' });
+            fetchTrackedChats();
+          } catch (e) {}
+        };
+
+        const removeTrackItem = async (chatId) => {
+          if (!confirm('确定要取消对此会话的自动追更跟踪吗？')) return;
+          try {
+            await fetch(`/api/tracker/remove?chat_id=${chatId}`, { method: 'DELETE' });
+            fetchTrackedChats();
+          } catch (e) {}
+        };
+
+        const checkTrackNow = async (chatId) => {
+          try {
+            const url = chatId ? `/api/tracker/check?chat_id=${chatId}` : '/api/tracker/check';
+            const res = await fetch(url, { method: 'POST' });
+            const data = await res.json();
+            alert(data.message || (data.success ? '探测完成' : '探测失败'));
+            fetchTrackedChats();
+            fetchQueue();
+          } catch (e) {
+            alert('探测异常: ' + e);
+          }
+        };
+
+        // ==================== 📦 文件迁移与防重统计 ====================
+        const downloadsStats = ref({});
+        const migrationFolders = ref([]);
+        const migrateForm = ref({
+          source_folder: '',
+          target_dir: '',
+          mode: 'move',
+          preserve_subfolder: true
+        });
+        const isMigrating = ref(false);
+        const migrationResult = ref('');
+
+        const fetchDownloadsStats = async () => {
+          try {
+            const res = await fetch('/api/downloads/stats');
+            const data = await res.json();
+            if (data.success) {
+              downloadsStats.value = data.stats || {};
+            }
+          } catch (e) {}
+        };
+
+        const fetchMigrationSummary = async () => {
+          try {
+            const res = await fetch('/api/migrate/summary');
+            const data = await res.json();
+            if (data.success) {
+              migrationFolders.value = data.folders || [];
+            }
+          } catch (e) {}
+        };
+
+        const scanLocalExistingFiles = async () => {
+          try {
+            const res = await fetch('/api/downloads/scan_now', { method: 'POST' });
+            const data = await res.json();
+            alert(data.message || '扫描登记完毕！');
+            fetchDownloadsStats();
+            fetchMigrationSummary();
+          } catch (e) {
+            alert('扫描失败: ' + e);
+          }
+        };
+
+        const startMigration = async () => {
+          if (!migrateForm.value.source_folder || !migrateForm.value.target_dir) {
+            alert('请选择源文件夹并指定目标目录！');
+            return;
+          }
+          if (!confirm(`确定要将所选文件 ${migrateForm.value.mode === 'move' ? '移动' : '复制'} 到「${migrateForm.value.target_dir}」吗？`)) {
+            return;
+          }
+          isMigrating.value = true;
+          migrationResult.value = '';
+          try {
+            const res = await fetch('/api/migrate/start', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(migrateForm.value)
+            });
+            const data = await res.json();
+            if (data.success) {
+              migrationResult.value = data.message;
+              fetchDownloadsStats();
+              fetchMigrationSummary();
+            } else {
+              alert('迁移失败: ' + data.message);
+            }
+          } catch (e) {
+            alert('迁移异常: ' + e);
+          } finally {
+            isMigrating.value = false;
+          }
+        };
+
+        const formatBytes = (bytes) => {
+          if (!bytes || bytes === 0) return '0 B';
+          const k = 1024;
+          const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return (bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+        };
+
+        const formatTimestamp = (ts) => {
+          if (!ts) return '尚未检查';
+          const d = new Date(ts * 1000);
+          return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        };
+
+        onMounted(() => {
+          fetchStatus();
+          fetchQueue();
+          fetchChats();
+          fetchLogs();
+          fetchTrackedChats();
+          fetchDownloadsStats();
+          fetchMigrationSummary();
+
+          timer = setInterval(() => {
+            fetchStatus();
+            fetchQueue();
+            if (activeChat.value) {
+              fetchProgress(activeChat.value);
+            }
+          }, 2000);
+
+          setInterval(fetchTrackedChats, 10000);
+        });
+
+        onUnmounted(() => {
+          if (timer) clearInterval(timer);
+        });
+
+        return {
+          currentTab,
+          status,
+          chats,
+          searchQuery,
+          selectedType,
+          botOnlyWithVideos,
+          botTotalCount,
+          botWithVideosCount,
+          activeChat,
+          progress,
+          previewCards,
+          filterType,
+          filterDuration,
+          filterStatus,
+          previewSearch,
+          sortBy,
+          resetFilters,
+          filteredPreviewCards,
+          filteredTotalSize,
+          filteredUndownloadedCount,
+          downloadFilteredCards,
+          isPreviewLoading,
+          queueData,
+          activeTaskProgress,
+          logs,
+          filteredChats,
+          onlyWithVideos,
+          botScanStatus,
+          getChatFilteredCount,
+          startBotScan,
+          selectChat,
+          fetchChats,
+          fetchPreview,
+          addChatToQueue,
+          downloadSingle,
+          moveQueue,
+          removeQueue,
+          skipCurrentTask,
+          stopAll,
+          resumeQueue,
+          openFolder,
+          fetchLogs,
+          showSettings,
+          settingsForm,
+          saveSettings,
+          lightboxUrl,
+          openLightbox,
+          // 📡 自动追更监控
+          trackedChats,
+          trackerEngineStatus,
+          isChatTracked,
+          fetchTrackedChats,
+          quickToggleTrack,
+          addCurrentChatToTrack,
+          updateTrackItem,
+          toggleTrackStatus,
+          removeTrackItem,
+          checkTrackNow,
+          // 📦 文件迁移与防重
+          downloadsStats,
+          migrationFolders,
+          migrateForm,
+          isMigrating,
+          migrationResult,
+          fetchDownloadsStats,
+          fetchMigrationSummary,
+          scanLocalExistingFiles,
+          startMigration,
+          formatBytes,
+          formatTimestamp
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>

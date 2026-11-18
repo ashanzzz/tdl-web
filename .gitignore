@@ -1,0 +1,20 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.log
+.DS_Store
+Thumbs.db
+
+# 本地数据与下载
+downloads/
+*.tmp
+*.bak*
+
+# Windows 专用二进制与工具
+tdl.exe
+TelegramDownloader.exe
+_internal_tools/
+
+# IDE 配置文件
+.idea/
+.vscode/

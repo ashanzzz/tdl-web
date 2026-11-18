@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  tdl-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tdl-web:latest
+    container_name: tdl-web
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      - TZ=Asia/Shanghai
+      - DOWNLOAD_DIR=/data/downloads
+      - META_DIR=/data/config
+      - PROXY_URL=http://192.168.8.11:7890
+      - MCP_GATEWAY_URL=http://192.168.8.11:8791
+      - TRACKER_INTERVAL=1800
+    volumes:
+      # 挂载宿主机或 NAS 实际下载存储目录
+      - /mnt/user/downloads/telegram:/data/downloads
+      # 挂载元数据与防重 SQLite 数据库目录
+      - /mnt/user/appdata/tdl-web/config:/data/config
+      # 挂载 Telegram Session 登录凭证目录 (保证重启不丢登录)
+      - /mnt/user/appdata/tdl-web/session:/root/.tdl
