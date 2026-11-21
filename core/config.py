@@ -60,7 +60,11 @@ SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 THUMB_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 # 网络与网关默认配置
-DEFAULT_PROXY = os.environ.get("PROXY_URL", "http://192.168.8.11:7890")
+raw_proxy = os.environ.get("PROXY_URL", "socks5://192.168.8.11:7890")
+if raw_proxy.startswith("http://") and (":7890" in raw_proxy or ":7891" in raw_proxy):
+    DEFAULT_PROXY = "socks5://" + raw_proxy[7:]
+else:
+    DEFAULT_PROXY = raw_proxy
 MCP_GATEWAY_URL = os.environ.get("MCP_GATEWAY_URL", "http://192.168.8.11:8791")
 SERVER_PORT = int(os.environ.get("PORT", 8765))
 

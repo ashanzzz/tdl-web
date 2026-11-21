@@ -511,8 +511,8 @@ class DownloadQueueManager:
                     "chat_id": chat_id,
                     "chat_name": chat_name,
                     "task_type": "all",
-                    "threads": 8,
-                    "limit": 4,
+                    "threads": 4,
+                    "limit": 2,
                     "proxy": DEFAULT_PROXY,
                     "status": "downloading",
                     "started_at": time.time(),
@@ -534,8 +534,8 @@ class DownloadQueueManager:
                 "message_id": task_params.get("message_id"),
                 "message_ids": task_params.get("message_ids"),
                 "file_name": task_params.get("file_name"),
-                "threads": task_params.get("threads", 8),
-                "limit": task_params.get("limit", 4),
+                "threads": task_params.get("threads", 4),
+                "limit": task_params.get("limit", 2),
                 "proxy": task_params.get("proxy", DEFAULT_PROXY),
                 "status": "waiting",
                 "added_at": time.time(),
@@ -661,16 +661,17 @@ class DownloadQueueManager:
             "-f", str(use_json),
             "-d", str(target_dir),
             "--skip-same",
-            "-t", str(task.get("threads", 8)),
-            "-l", str(task.get("limit", 4)),
+            "-t", str(task.get("threads", 4)),
+            "-l", str(task.get("limit", 2)),
             "--proxy", task.get("proxy", DEFAULT_PROXY)
         ]
 
         try:
+            dl_log = open(META_DIR / "last_download.log", "a", encoding="utf-8")
             new_proc = subprocess.Popen(
                 cmd,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+                stdout=dl_log,
+                stderr=subprocess.STDOUT,
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             )
             task["status"] = "downloading"
@@ -913,34 +914,49 @@ def watchdog_loop():
                     safe_name = sanitize_name(cur_task["chat_name"])
                     target_dir = BASE_DOWNLOAD_DIR / safe_name
 
-                    # 实时检查当前任务是否已下载完毕
+                    # 实时检查当前任务是否已真正下载完毕（必须无 tmp 临时文件且文件有效）
                     is_completed = False
                     if cur_task.get("task_type") == "single":
                         fname = cur_task.get("file_name")
                         mid = cur_task.get("message_id")
                         file_found = False
+                        has_tmp = False
                         if target_dir.exists():
                             for f in os.scandir(target_dir):
-                                if f.is_file() and not f.name.endswith(".tmp"):
-                                    if fname and f.name == fname:
-                                        file_found = True
-                                        break
-                                    if mid and f"_{mid}_" in f.name:
-                                        file_found = True
-                                        break
-                        if file_found:
+                                if f.is_file():
+                                    if f.name.endswith(".tmp"):
+                                        has_tmp = True
+                                    elif f.stat().st_size > 0:
+                                        if (fname and f.name == fname) or (mid and f"_{mid}_" in f.name):
+                                            file_found = True
+                        # 仅在无 tmp 临时文件且文件真实落盘（大小>0）且进程已自然结束时，标记完成
+                        if file_found and not has_tmp and not proc:
                             is_completed = True
                     else:
                         v_json = META_DIR / f"{safe_name}_{cur_task['chat_id']}_videos.json"
+                        target_count = 0
                         if v_json.exists():
                             try:
                                 with open(v_json, "r", encoding="utf-8") as jf:
                                     target_count = len(json.load(jf).get("messages", []))
-                                completed_count = sum(1 for f in os.scandir(target_dir) if f.is_file() and not f.name.endswith(".tmp")) if target_dir.exists() else 0
-                                if target_count > 0 and completed_count >= target_count:
-                                    is_completed = True
                             except Exception:
                                 pass
+                        
+                        has_tmp = False
+                        valid_files = 0
+                        if target_dir.exists():
+                            for f in os.scandir(target_dir):
+                                if f.is_file():
+                                    if f.name.endswith(".tmp"):
+                                        has_tmp = True
+                                    elif f.stat().st_size > 0:
+                                        valid_files += 1
+
+                        if not has_tmp:
+                            if target_count > 0 and valid_files >= target_count:
+                                is_completed = True
+                            elif not proc and valid_files > 0:
+                                is_completed = True
 
                     if is_completed:
                         if proc:
@@ -997,8 +1013,8 @@ class QueueAddRequest(BaseModel):
 class DownloadRequest(BaseModel):
     chat_id: int
     chat_name: str
-    threads: int = 8
-    limit: int = 4
+    threads: int = 4
+    limit: int = 2
     proxy: str = DEFAULT_PROXY
     switch_if_running: bool = False
     auto_export: bool = True
