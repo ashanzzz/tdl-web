@@ -8,6 +8,7 @@ import datetime
 import threading
 import subprocess
 import uuid
+import shutil
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 
@@ -198,13 +199,25 @@ def file_has_raw_metadata(json_file: Path) -> bool:
 
 def sync_session_cache():
     try:
-        src = Path(os.path.expanduser(r"~\.tdl\data\default"))
-        if src.exists():
+        candidates = [
+            Path.home() / ".tdl" / "data" / "default",
+            Path("/root/.tdl/data/default"),
+            Path(os.path.expanduser("~/.tdl/data/default")),
+            Path(os.path.expandvars(r"%USERPROFILE%\.tdl\data\default")),
+        ]
+        src = None
+        for cand in candidates:
+            if cand.exists() and cand.is_file() and cand.stat().st_size > 0:
+                src = cand
+                break
+        if src and src.exists():
+            SESSION_CACHE_DIR.mkdir(parents=True, exist_ok=True)
             dst = SESSION_CACHE_DIR / "default"
-            shutil.copy2(src, dst)
+            if not dst.exists() or src.stat().st_size != dst.stat().st_size or src.stat().st_mtime > dst.stat().st_mtime:
+                shutil.copy2(src, dst)
             return True
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[sync_session_cache] Error: {e}")
     return False
 
 def sanitize_name(name: str) -> str:
@@ -395,7 +408,7 @@ monitor = SystemMonitor()
 def get_tdl_process():
     for p in psutil.process_iter(['pid', 'name', 'cpu_percent', 'memory_info', 'create_time', 'cmdline']):
         try:
-            if p.info['name'] and p.info['name'].lower() == 'tdl.exe':
+            if p.info['name'] and p.info['name'].lower() in ('tdl.exe', 'tdl'):
                 return p
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
@@ -420,6 +433,20 @@ def extract_videos_json(full_json: Path, videos_json: Path):
             mime = doc.get("MimeType", "")
             if mime.startswith("video"):
                 vmsgs.append(m)
+
+        # 保留历史已提取到的视频（去重合并，防止浅层扫描覆盖已发现的视频）
+        if videos_json.exists():
+            try:
+                with open(videos_json, "r", encoding="utf-8") as old_f:
+                    old_d = json.load(old_f)
+                existing_map = {m.get("id"): m for m in old_d.get("messages", []) if m.get("id")}
+                for vm in vmsgs:
+                    if vm.get("id"):
+                        existing_map[vm.get("id")] = vm
+                vmsgs = sorted(list(existing_map.values()), key=lambda x: x.get("id", 0), reverse=True)
+            except Exception:
+                pass
+
         with open(videos_json, "w", encoding="utf-8") as f:
             json.dump({"id": d.get("id"), "messages": vmsgs}, f, ensure_ascii=False)
         return vmsgs
@@ -586,31 +613,44 @@ class DownloadQueueManager:
             if not raw_use_json.exists():
                 return {"success": False, "message": "未找到媒体清单，请先导出！"}
 
-            # ========== SQLite 智能防重与差量过滤 ==========
+            # ========== 任务类型分发与 SQLite 智能防重 ==========
             use_json = raw_use_json
             try:
                 with open(raw_use_json, "r", encoding="utf-8") as f:
                     manifest = json.load(f)
                 all_msgs = manifest.get("messages", [])
                 
-                downloaded_ids = get_downloaded_message_ids(task["chat_id"])
-                pending_msgs = [m for m in all_msgs if m.get("id") not in downloaded_ids]
+                # 如果是单个指定视频下载
+                if task.get("task_type") == "single" and task.get("message_id"):
+                    target_mid = task["message_id"]
+                    pending_msgs = [m for m in all_msgs if m.get("id") == target_mid]
+                    if not pending_msgs:
+                        pj = META_DIR / f"{safe_name}_{task['chat_id']}_preview.json"
+                        if pj.exists():
+                            with open(pj, "r", encoding="utf-8") as pf:
+                                pending_msgs = [m for m in json.load(pf).get("messages", []) if m.get("id") == target_mid]
+                elif task.get("message_ids"):
+                    target_set = set(task["message_ids"])
+                    pending_msgs = [m for m in all_msgs if m.get("id") in target_set]
+                else:
+                    downloaded_ids = get_downloaded_message_ids(task["chat_id"])
+                    pending_msgs = [m for m in all_msgs if m.get("id") not in downloaded_ids]
 
                 if not pending_msgs and all_msgs:
                     task["status"] = "completed"
                     task["completed_at"] = time.time()
                     self.completed_history.insert(0, task)
                     self.save_queue()
-                    monitor.watchdog_status = f"「{task['chat_name']}」全部视频已在防重库中，已安全跳过"
+                    monitor.watchdog_status = f"「{task['chat_name']}」指定视频已在防重库中，已安全跳过"
                     threading.Timer(1.0, self.start_next_in_queue).start()
-                    return {"success": True, "already_completed": True, "message": f"「{task['chat_name']}」全部视频已在防重库中（已下载或已迁移），无需重复下载！"}
+                    return {"success": True, "already_completed": True, "message": f"「{task['chat_name']}」该视频已在防重库中（已下载或已迁移），无需重复下载！"}
 
-                if len(pending_msgs) < len(all_msgs):
-                    filtered_json = META_DIR / f"{safe_name}_{task['chat_id']}_pending.json"
-                    manifest["messages"] = pending_msgs
-                    with open(filtered_json, "w", encoding="utf-8") as f:
-                        json.dump(manifest, f, ensure_ascii=False, indent=2)
-                    use_json = filtered_json
+                # 生成本次任务专属的下载清单，避免多任务相互干扰
+                filtered_json = META_DIR / f"{safe_name}_{task['chat_id']}_task_{task['id']}.json"
+                manifest["messages"] = pending_msgs
+                with open(filtered_json, "w", encoding="utf-8") as f:
+                    json.dump(manifest, f, ensure_ascii=False, indent=2)
+                use_json = filtered_json
             except Exception as e:
                 use_json = raw_use_json
 
@@ -773,16 +813,16 @@ class BotMediaScanner:
                 u = b.get("username")
                 tmp_path = META_DIR / f"scan_{cid}.json"
 
-                sync_session_cache()
+                has_cache = sync_session_cache()
+                storage_args = ["--storage", f"path={SESSION_CACHE_DIR},type=bolt"] if (has_cache and (SESSION_CACHE_DIR / "default").exists()) else []
                 cmd = [
                     str(TDL_EXE), "chat", "export",
                     "-c", str(cid),
                     "-T", "last", "-i", "40",
                     "--all", "--raw",
                     "-o", str(tmp_path),
-                    "--storage", f"path={SESSION_CACHE_DIR},type=bolt",
                     "--proxy", DEFAULT_PROXY
-                ]
+                ] + storage_args
                 try:
                     res = subprocess.run(cmd, capture_output=True, timeout=20)
                     if tmp_path.exists():
@@ -873,18 +913,34 @@ def watchdog_loop():
                     safe_name = sanitize_name(cur_task["chat_name"])
                     target_dir = BASE_DOWNLOAD_DIR / safe_name
 
-                    # 实时检查当前任务是否已 100% 下载完毕
+                    # 实时检查当前任务是否已下载完毕
                     is_completed = False
-                    v_json = META_DIR / f"{safe_name}_{cur_task['chat_id']}_videos.json"
-                    if v_json.exists():
-                        try:
-                            with open(v_json, "r", encoding="utf-8") as jf:
-                                target_count = len(json.load(jf).get("messages", []))
-                            completed_count = sum(1 for f in os.scandir(target_dir) if f.is_file() and not f.name.endswith(".tmp")) if target_dir.exists() else 0
-                            if target_count > 0 and completed_count >= target_count:
-                                is_completed = True
-                        except Exception:
-                            pass
+                    if cur_task.get("task_type") == "single":
+                        fname = cur_task.get("file_name")
+                        mid = cur_task.get("message_id")
+                        file_found = False
+                        if target_dir.exists():
+                            for f in os.scandir(target_dir):
+                                if f.is_file() and not f.name.endswith(".tmp"):
+                                    if fname and f.name == fname:
+                                        file_found = True
+                                        break
+                                    if mid and f"_{mid}_" in f.name:
+                                        file_found = True
+                                        break
+                        if file_found:
+                            is_completed = True
+                    else:
+                        v_json = META_DIR / f"{safe_name}_{cur_task['chat_id']}_videos.json"
+                        if v_json.exists():
+                            try:
+                                with open(v_json, "r", encoding="utf-8") as jf:
+                                    target_count = len(json.load(jf).get("messages", []))
+                                completed_count = sum(1 for f in os.scandir(target_dir) if f.is_file() and not f.name.endswith(".tmp")) if target_dir.exists() else 0
+                                if target_count > 0 and completed_count >= target_count:
+                                    is_completed = True
+                            except Exception:
+                                pass
 
                     if is_completed:
                         if proc:
@@ -1459,23 +1515,25 @@ def get_chat_preview(chat_id: int = Query(...), chat_name: str = Query(...), ref
 
     # 如果现有文件都没有 raw 元数据(如旧版极简导出)，或者用户请求刷新：立即抓取完整 raw 消息
     if (use_json is None or refresh) and TDL_EXE.exists():
-        sync_session_cache()
+        has_cache = sync_session_cache()
+        storage_args = ["--storage", f"path={SESSION_CACHE_DIR},type=bolt"] if (has_cache and (SESSION_CACHE_DIR / "default").exists()) else []
         cmd_export = [
             str(TDL_EXE), "chat", "export",
             "-c", str(chat_id),
-            "-T", "last", "-i", "80",
+            "-T", "last", "-i", "300",
             "--all", "--raw",
             "-o", str(preview_json),
-            "--storage", f"path={SESSION_CACHE_DIR},type=bolt",
             "--proxy", DEFAULT_PROXY
-        ]
+        ] + storage_args
         try:
-            res = subprocess.run(cmd_export, capture_output=True, timeout=35)
+            res = subprocess.run(cmd_export, capture_output=True, text=True, timeout=35)
             if res.returncode == 0 and preview_json.exists():
                 use_json = preview_json
                 extract_videos_json(preview_json, videos_json)
-        except Exception:
-            pass
+            else:
+                print(f"[get_chat_preview] Export warning for chat {chat_id}: {res.stderr or res.stdout}")
+        except Exception as e:
+            print(f"[get_chat_preview] Export exception for chat {chat_id}: {e}")
 
     # 保底回退
     if use_json is None:

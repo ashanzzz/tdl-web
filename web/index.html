@@ -1475,6 +1475,15 @@
             <div>数据隔离通道抓取中，不会干扰正在进行的后台下载</div>
           </div>
 
+          <div v-else-if="previewCards.length === 0" class="empty-state">
+            <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 8px;">该会话暂未发现可直接下载的媒体视频</div>
+            <div style="margin-bottom: 16px; color: var(--text-dim); line-height: 1.6; max-width: 600px; margin-left: auto; margin-right: auto;">
+              提示：若该会话为交互式搜索机器人（如搜片Bot、网盘助手），通常需要向机器人发送关键词指令后才会推送视频文件；或者视频存在于更早的历史消息中。
+            </div>
+            <button class="btn btn-primary btn-sm" @click="fetchPreview(true)" style="margin-right: 8px;">深度探测刷新本会话</button>
+            <button class="btn btn-secondary btn-sm" @click="fetchChats">刷新会话列表</button>
+          </div>
+
           <div v-else-if="filteredPreviewCards.length === 0" class="empty-state">
             <div style="font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 8px;">未找到符合当前条件的视频（共 {{ previewCards.length }} 个媒体已被过滤）</div>
             <div style="margin-bottom: 16px; color: var(--text-dim); line-height: 1.6;">
